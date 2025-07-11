@@ -12,44 +12,40 @@ if ('__TAURI__' in window) {
     const origin = e.target.closest('a');
     if (!origin || !origin.href) return;
 
-    const isBaseTargetBlank = !!document.querySelector('head base[target="_blank"]');
-    const linkUrl = new URL(origin.href);
-    const appHostname = window.location.hostname;
+    const isBaseTargetBlank = document.querySelector('head base[target="_blank"]');
 
-    const isExternal = linkUrl.hostname !== appHostname;
+    if (origin.target === '_blank' || isBaseTargetBlank) {
+      e.preventDefault(); // <-- THIS IS THE KEY
 
-    // Only handle external links with target="_blank" or base[target="_blank"]
-    if ((origin.target === '_blank' || isBaseTargetBlank) && isExternal) {
-      // Check if Shift key is pressed
+      // Check for Shift+Click and YouTube watch URL
       if (e.shiftKey) {
-        e.preventDefault();
+        try {
+          const url = new URL(origin.href);
+          if (url.hostname === 'www.youtube.com' && url.pathname === '/watch' && url.searchParams.has('v')) {
+            const videoId = url.searchParams.get('v');
+            const embedUrl = `https://www.youtube.com/embed/${videoId}`;
 
-        // Check if it's a YouTube watch URL
-        const ytMatch = linkUrl.pathname === '/watch' && linkUrl.searchParams.has('v')
-          ? linkUrl.searchParams.get('v')
-          : null;
+            // Popup window parameters
+            const width = 800;
+            const height = 450;
+            const left = window.screenX + (window.outerWidth - width) / 2;
+            const top = window.screenY + (window.outerHeight - height) / 2;
 
-        if (ytMatch) {
-          // Construct embed URL
-          const embedUrl = `https://www.youtube.com/embed/${ytMatch}`;
+            window.open(
+              embedUrl,
+              'youtube_embed_popup',
+              `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=no`
+            );
 
-          // Open centered popup window with embed URL
-          const width = 800;
-          const height = 450;
-          const left = window.screenX + (window.outerWidth - width) / 2;
-          const top = window.screenY + (window.outerHeight - height) / 2;
-
-          window.open(
-            embedUrl,
-            'youtube_embed_popup',
-            `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=no`
-          );
-          return;
+            return; // Exit early, do not invoke open_url
+          }
+        } catch {
+          // Invalid URL, fallback to normal behavior below
         }
       }
 
-      // If not Shift+Click or not YouTube, open normally in default browser
-      e.preventDefault();
+      // Default behavior: open in default browser
+      console.log('origin', origin, isBaseTargetBlank);
       invoke('open_url', { url: origin.href });
     }
   };
