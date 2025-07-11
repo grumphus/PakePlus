@@ -14,10 +14,37 @@ if ('__TAURI__' in window) {
 
     const isBaseTargetBlank = document.querySelector('head base[target="_blank"]');
 
-    // Only handle links with target="_blank" or base[target="_blank"]
     if (origin.target === '_blank' || isBaseTargetBlank) {
       e.preventDefault(); // <-- THIS IS THE KEY
 
+      // Check for Shift+Click and YouTube watch URL
+      if (e.shiftKey) {
+        try {
+          const url = new URL(origin.href);
+          if (url.hostname === 'www.youtube.com' && url.pathname === '/watch' && url.searchParams.has('v')) {
+            const videoId = url.searchParams.get('v');
+            const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+
+            // Popup window parameters
+            const width = 800;
+            const height = 450;
+            const left = window.screenX + (window.outerWidth - width) / 2;
+            const top = window.screenY + (window.outerHeight - height) / 2;
+
+            window.open(
+              embedUrl,
+              'youtube_embed_popup',
+              `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=no`
+            );
+
+            return; // Exit early, do not invoke open_url
+          }
+        } catch {
+          // Invalid URL, fallback to normal behavior below
+        }
+      }
+
+      // Default behavior: open in default browser
       console.log('origin', origin, isBaseTargetBlank);
       invoke('open_url', { url: origin.href });
     }
